@@ -1,0 +1,18 @@
+# Cloned DeathStarBench checkout + wrk2 build — created by install.sh
+dist/
+
+# Benchmark outputs + app-init markers
+rst/
+.state/
+
+# Vim / editor swap files
+*.swp
+*.swo
+*~
+
+# Python bytecode cache
+__pycache__/
+
+# macOS metadata
+.DS_Store
+._*
