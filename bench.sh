@@ -84,30 +84,14 @@ esac
 workload_config "$APP" "$WORKLOAD"
 [[ -x "$WRK" ]] || dsb_die "wrk2 not found at $WRK — run ./install.sh first"
 
-# -- CPU affinity for wrk2 threads (verbatim parser from nginx-bench/bench.sh)
+# -- CPU affinity for wrk2 threads (expand_cores validates against nproc)
 if [[ -n "${WRK_CORES:-}" ]]; then
     command -v taskset &>/dev/null || dsb_die "taskset not found (install util-linux)"
-    NUM_CPUS=$(nproc)
-    CORES=()
-    IFS=',' read -ra TOKENS <<< "$WRK_CORES"
-    for token in "${TOKENS[@]}"; do
-        if [[ "$token" =~ ^([0-9]+)-([0-9]+)$ ]]; then
-            lo="${BASH_REMATCH[1]}"; hi="${BASH_REMATCH[2]}"
-            (( lo <= hi )) || dsb_die "invalid range: $token"
-            for (( c=lo; c<=hi; c++ )); do CORES+=("$c"); done
-        elif [[ "$token" =~ ^[0-9]+$ ]]; then
-            CORES+=("$token")
-        else
-            dsb_die "invalid core spec: $token"
-        fi
-    done
-    for core in "${CORES[@]}"; do
-        (( core < NUM_CPUS )) || dsb_die "core $core >= nproc ($NUM_CPUS)"
-    done
-    if (( ${#CORES[@]} != THREADS )); then
-        dsb_die "WRK_CORES lists ${#CORES[@]} core(s) but -t is ${THREADS}; counts must match"
+    WRK_CORE_LIST=$(expand_cores "$WRK_CORES")
+    NUM_CORES=$(count_cores "$WRK_CORES")
+    if (( NUM_CORES != THREADS )); then
+        dsb_die "WRK_CORES lists ${NUM_CORES} core(s) but -t is ${THREADS}; counts must match"
     fi
-    WRK_CORE_LIST=$(IFS=,; echo "${CORES[*]}")
     WRK_TASKSET=(taskset -c "$WRK_CORE_LIST")
     echo "CPU affinity: wrk2 pinned to cores [${WRK_CORE_LIST}]"
 fi

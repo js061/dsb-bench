@@ -31,6 +31,33 @@ count_cores() {
     echo "$n"
 }
 
+# expand_cores SPEC — validate a CPU spec ("0-3", "0,2,4", "0-3,6") against
+# nproc and echo the normalized, explicit comma list (e.g. "0-3,6" -> "0,1,2,3,6").
+# Suitable for taskset -c and docker --cpuset-cpus. Dies on any malformed token
+# or out-of-range core.
+expand_cores() {
+    local spec="$1" token lo hi c
+    local ncpus; ncpus=$(nproc)
+    local cores=()
+    local IFS=','
+    for token in $spec; do
+        if [[ "$token" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+            lo="${BASH_REMATCH[1]}"; hi="${BASH_REMATCH[2]}"
+            (( lo <= hi )) || dsb_die "invalid core range: $token"
+            for (( c=lo; c<=hi; c++ )); do cores+=("$c"); done
+        elif [[ "$token" =~ ^[0-9]+$ ]]; then
+            cores+=("$token")
+        else
+            dsb_die "invalid core spec: '$token' (use forms like 0-3 or 0,2,4)"
+        fi
+    done
+    (( ${#cores[@]} > 0 )) || dsb_die "empty core spec"
+    for c in "${cores[@]}"; do
+        (( c < ncpus )) || dsb_die "core $c >= nproc ($ncpus)"
+    done
+    ( IFS=,; echo "${cores[*]}" )
+}
+
 # app_config APP — populate APP_DIR, COMPOSE_FILE, FRONTEND_URL, DEFAULT_WORKLOAD
 app_config() {
     local app="$1"

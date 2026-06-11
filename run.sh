@@ -22,7 +22,7 @@ Options:
   --plot   render a latency-percentile PNG from the wrk2 -L spectrum
            (requires python3 + numpy + matplotlib)
 
-Env vars: APP WORKLOAD WRK_CORES THREADS CONNECTIONS DURATION
+Env vars: APP WORKLOAD WRK_CORES APP_CORES THREADS CONNECTIONS DURATION
           TARGETRPS TARGETRPS_DIST RUN_TAG
 EOF
             exit 0 ;;
@@ -35,6 +35,7 @@ APP="${APP:-socialNetwork}"
 app_config "$APP"
 WORKLOAD="${WORKLOAD:-$DEFAULT_WORKLOAD}"
 WRK_CORES="${WRK_CORES:-20-29}"
+APP_CORES="${APP_CORES:-}"      # empty = app containers unpinned (all cores)
 
 # THREADS defaults to the number of cores in WRK_CORES
 if [[ -z "${THREADS:-}" ]]; then
@@ -54,10 +55,13 @@ STAMP=$(date -u +%Y%m%d-%H%M%S)
 RUN_TAG="${RUN_TAG:-}"
 TAG_PART=""
 [[ -n "$RUN_TAG" ]] && TAG_PART="_${RUN_TAG}"
-OUT="${RST_DIR}/dsb-${APP}-${WORKLOAD}_wrk-cpu${WRK_CORES}-t${THREADS}-c${CONNECTIONS}-d${DURATION}-R${TARGETRPS}-D${TARGETRPS_DIST}${TAG_PART}_${STAMP}.out"
+# only encode app pinning in the filename when it is set
+APP_CPU_PART=""
+[[ -n "$APP_CORES" ]] && APP_CPU_PART="-appcpu${APP_CORES}"
+OUT="${RST_DIR}/dsb-${APP}-${WORKLOAD}_wrk-cpu${WRK_CORES}${APP_CPU_PART}-t${THREADS}-c${CONNECTIONS}-d${DURATION}-R${TARGETRPS}-D${TARGETRPS_DIST}${TAG_PART}_${STAMP}.out"
 
 # -- ensure the app is up and initialized (idempotent; reused across runs)
-APP="$APP" "$SCRIPT_DIR/start.sh"
+APP="$APP" APP_CORES="$APP_CORES" "$SCRIPT_DIR/start.sh"
 
 echo "RUN"
 START_UTC=$(date -u +"%Y-%m-%dT%H:%M:%SZ")

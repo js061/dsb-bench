@@ -9,7 +9,7 @@ REPEATS=1
 APP_arr=(socialNetwork)
 WORKLOAD_arr=(compose-post)
 WRK_CORES_arr=(8-9)
-THREADS_arr=(2)
+APP_CORES_arr=(0-7)     # cores for the app containers; use "" to leave unpinned
 CONNECTIONS_arr=(100 200 300)
 DURATION_arr=(30)
 TARGETRPS_arr=(1000 5000)
@@ -19,7 +19,7 @@ TARGETRPS_DIST_arr=(fixed)
 
 total=$(( REPEATS \
     * ${#APP_arr[@]} * ${#WORKLOAD_arr[@]} \
-    * ${#WRK_CORES_arr[@]} * ${#THREADS_arr[@]} \
+    * ${#WRK_CORES_arr[@]} * ${#APP_CORES_arr[@]} \
     * ${#CONNECTIONS_arr[@]} * ${#DURATION_arr[@]} \
     * ${#TARGETRPS_arr[@]} * ${#TARGETRPS_DIST_arr[@]} ))
 count=0
@@ -37,18 +37,18 @@ for rep in $(seq 1 "$REPEATS"); do                  # top layer: repeats
     prev_app="$ap"
     for wl in "${WORKLOAD_arr[@]}"; do
       for wc in "${WRK_CORES_arr[@]}"; do
-        for th in "${THREADS_arr[@]}"; do
+        for ac in "${APP_CORES_arr[@]}"; do
           for cn in "${CONNECTIONS_arr[@]}"; do
             for du in "${DURATION_arr[@]}"; do
               for tr in "${TARGETRPS_arr[@]}"; do
                 for trd in "${TARGETRPS_DIST_arr[@]}"; do
                   count=$(( count + 1 ))
                   echo ""
-                  echo "=== [batch $count/$total] repeat=$rep | app=$ap workload=$wl | wrk-cores=$wc threads=$th conn=$cn dur=$du rps=$tr dist=$trd ==="
+                  echo "=== [batch $count/$total] repeat=$rep | app=$ap workload=$wl | wrk-cores=$wc app-cores=${ac:-none} conn=$cn dur=$du rps=$tr dist=$trd ==="
                   APP="$ap" \
                   WORKLOAD="$wl" \
                   WRK_CORES="$wc" \
-                  THREADS="$th" \
+                  APP_CORES="$ac" \
                   CONNECTIONS="$cn" \
                   DURATION="$du" \
                   TARGETRPS="$tr" \
