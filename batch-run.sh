@@ -10,9 +10,9 @@ APP_arr=(socialNetwork)
 WORKLOAD_arr=(compose-post)
 WRK_CORES_arr=(8-9)
 APP_CORES_arr=(0-7)     # cores for the app containers; use "" to leave unpinned
-CONNECTIONS_arr=(100 200 300)
+CONNECTIONS_arr=(100)
 DURATION_arr=(30)
-TARGETRPS_arr=(1000 5000)
+TARGETRPS_arr=(1000)
 TARGETRPS_DIST_arr=(fixed)
 
 [[ -x "$SCRIPT_DIR/run.sh" ]] || { echo "ERROR: run.sh not found or not executable" >&2; exit 1; }
@@ -45,6 +45,18 @@ for rep in $(seq 1 "$REPEATS"); do                  # top layer: repeats
                   count=$(( count + 1 ))
                   echo ""
                   echo "=== [batch $count/$total] repeat=$rep | app=$ap workload=$wl | wrk-cores=$wc app-cores=${ac:-none} conn=$cn dur=$du rps=$tr dist=$trd ==="
+                  # fresh restart before each run: tear down, then run.sh starts it up again
+                  APP="$ap" "$SCRIPT_DIR/stop.sh"
+                  # between runs: settle, then drop page cache for a clean start
+                  if (( count > 1 )); then
+                    sleep 5
+                    sync
+                    if [[ $EUID -eq 0 ]]; then
+                      echo 3 > /proc/sys/vm/drop_caches
+                    else
+                      echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null
+                    fi
+                  fi
                   APP="$ap" \
                   WORKLOAD="$wl" \
                   WRK_CORES="$wc" \
